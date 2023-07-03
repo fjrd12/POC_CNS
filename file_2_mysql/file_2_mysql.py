@@ -20,13 +20,14 @@ Example DAG demonstrating the usage of the TaskFlow API to execute Python functi
 virtual environment.
 """
 from __future__ import annotations
-
+from airflow.hooks.base import BaseHook
+from airflow.hooks.mysql_hook import MySqlHook
 import logging
 import shutil
 import sys
 import tempfile
 #import time
-from datetime import datetime
+from datetime import date
 from pprint import pprint
 import csv
 import pendulum
@@ -41,11 +42,7 @@ log = logging.getLogger(__name__)
 PATH_TO_PYTHON_BINARY = sys.executable
 IN_FILE = '/opt/airflow/dags/POC_CNS/file_2_mysql/IN/customers.csv'
 BASE_DIR = tempfile.gettempdir()
-
-
-def x():
-    pass
-
+CONN_ID = 'poc_mysql'
 
 with DAG(
     dag_id="file_2_mysql",
@@ -54,7 +51,6 @@ with DAG(
     catchup=False,
     tags=["file_2_mysql"],
 ) as dag:
-
     # [START ingest file]
     @task(task_id="ingest_file")
     def ingest_file(ds=None, **kwargs):
@@ -63,7 +59,6 @@ with DAG(
         print(ds)
         log.warning( "File ingestion " + ' customers.csv ')
         results = []
-
         with open(IN_FILE, 'r') as file:
           csvreader = csv.reader(file)
           for row in csvreader:
@@ -76,24 +71,74 @@ with DAG(
     @task(task_id="validate_data")
     def validate_data(ds=None, **kwargs):
         records = kwargs['ti'].xcom_pull(key='records')
-        for row in records:
-            log.info(row)
-            #apply_some_rules
+
+        #for row in records:
+        #    log.info(row)
+        #    #apply_some_rules
+        kwargs['ti'].xcom_push(key='records', value=records)
     validate_data_task = validate_data()
     #[END validate_data]
-
     # [START transform data]
     @task(task_id="transform_data")
     def transform_data(ds=None, **kwargs):
         records = kwargs['ti'].xcom_pull(key='records')
+        output_records = []
+        output_record = []
         for row in records:
-            row[13] = datetime.today().strftime('%Y-%m-%d')
-        kwargs['ti'].xcom_push(key='records', value=records)
+            output_record = []
+            output_record.append(row[0])
+            output_record.append(row[1])
+            output_record.append(row[2])
+            output_record.append(row[3])
+            output_record.append(row[4])
+            output_record.append(row[5])
+            output_record.append(row[6])
+            output_record.append(row[7])
+            output_record.append(row[8])
+            output_record.append(row[9])
+            output_record.append(row[10])
+            output_record.append(row[11])
+            output_record.append(row[12])
+            output_record.append(date.today())
+            output_records.append(output_record)
+        kwargs['ti'].xcom_push(key='records', value=output_records)
     transform_data_task =transform_data()
     #[END transform_data]
+    # [START load data]
+    @task(task_id="load_data")
+    def load_data(ds=None, **kwargs):
+        records = kwargs['ti'].xcom_pull(key='records')
+        output_records = []
+        output_record = []
+        target_fields = []
+        source = MySqlHook(CONN_ID)
+        conn = source.get_conn()
+        cursor = conn.cursor()
 
-    ingest_file_task >> validate_data_task >> transform_data_task
-    #>> load_data
+        target_fields.append('id')
+        target_fields.append('first_name')
+        target_fields.append('last_name')
+        target_fields.append('email')
+        target_fields.append('phone')
+        target_fields.append('address')
+        target_fields.append('gender')
+        target_fields.append('age')
+        target_fields.append('registered')
+        target_fields.append('orders')
+        target_fields.append('spent')
+        target_fields.append('job')
+        target_fields.append('hobbies')
+        target_fields.append('is_married')
+        target_fields.append('creation_date')
+        source.insert_rows('poc_db.customers',
+                           records,
+                           target_fields=target_fields,
+                           replace_index=None,
+                           replace=True)
+        cursor.close()
+        conn.close()
+        kwargs['ti'].xcom_push(key='records', value=output_records)
 
-
+    load_data_task = load_data()
+    # [END load_data]
 

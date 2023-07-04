@@ -68,7 +68,7 @@ with DAG(
 
     read_data_task = read_data()
     # [END read_data_mysql]
-    # [START load data]
+    # [START load_data_postgres]
     @task(task_id="load_data_postgresql")
     def load_data_postgres(ds=None, **kwargs):
         records = kwargs['ti'].xcom_pull(key='records')
@@ -89,6 +89,31 @@ with DAG(
         kwargs['ti'].xcom_push(key='records', value=output_records)
 
     load_data_task_psql = load_data_postgres()
-    # [END load_data]
+    # [END load_data_postgres]
 
-    read_data_task >> load_data_task_psql
+    # [START load_data_mssql]
+    @task(task_id="load_data_mssql")
+    def load_data_mssql(ds=None, **kwargs):
+        records = kwargs['ti'].xcom_pull(key='records')
+        output_records = []
+    # [END load_data_mssql]
+    load_data_task_mssql = load_data_mssql()
+
+    # [START load_data_oracle]
+    @task(task_id="load_data_oracle")
+    def load_data_oracle(ds=None, **kwargs):
+        records = kwargs['ti'].xcom_pull(key='records')
+        output_records = []
+    # [END load_data_oracle]
+    load_data_task_oracle = load_data_oracle()
+
+
+    # [START load_data_firebird]
+    @task(task_id="load_data_firebird")
+    def load_data_firebird(ds=None, **kwargs):
+        records = kwargs['ti'].xcom_pull(key='records')
+        output_records = []
+    # [END load_data_oracle]
+    load_data_task_firebird = load_data_firebird()
+
+    read_data_task >> [load_data_task_psql, load_data_task_mssql, load_data_task_oracle, load_data_task_firebird]

@@ -84,23 +84,27 @@ with DAG(
         records = kwargs['ti'].xcom_pull(key='records')
         output_records = []
         output_record = []
+        first = False
         for row in records:
-            output_record = []
-            output_record.append(row[0])
-            output_record.append(row[1])
-            output_record.append(row[2])
-            output_record.append(row[3])
-            output_record.append(row[4])
-            output_record.append(row[5])
-            output_record.append(row[6])
-            output_record.append(row[7])
-            output_record.append(row[8])
-            output_record.append(row[9])
-            output_record.append(row[10])
-            output_record.append(row[11])
-            output_record.append(row[12])
-            output_record.append(date.today())
-            output_records.append(output_record)
+            if first:
+                output_record = []
+                output_record.append(row[0])
+                output_record.append(row[1])
+                output_record.append(row[2])
+                output_record.append(row[3])
+                output_record.append(row[4])
+                output_record.append(row[5])
+                output_record.append(row[6])
+                output_record.append(row[7])
+                output_record.append(row[8])
+                output_record.append(row[9])
+                output_record.append(row[10])
+                output_record.append(row[11])
+                output_record.append(row[12])
+                output_record.append(date.today())
+                output_records.append(output_record)
+            else:
+                first = True
         kwargs['ti'].xcom_push(key='records', value=output_records)
     transform_data_task =transform_data()
     #[END transform_data]
@@ -115,7 +119,7 @@ with DAG(
         conn = source.get_conn()
         cursor = conn.cursor()
 
-        target_fields.append('id')
+        #target_fields.append('id')
         target_fields.append('first_name')
         target_fields.append('last_name')
         target_fields.append('email')
@@ -142,3 +146,5 @@ with DAG(
     load_data_task = load_data()
     # [END load_data]
 
+
+    ingest_file_task >> validate_data_task >> transform_data_task >> load_data_task

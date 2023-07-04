@@ -22,7 +22,7 @@ virtual environment.
 from __future__ import annotations
 from airflow.hooks.base import BaseHook
 from airflow.hooks.mysql_hook import MySqlHook
-#from airflow.hooks.postgres_hook import postgresHook
+from airflow.hooks.postgres_hook import PostgresHook
 import logging
 import shutil
 import sys
@@ -44,6 +44,7 @@ PATH_TO_PYTHON_BINARY = sys.executable
 IN_FILE = '/opt/airflow/dags/POC_CNS/file_2_mysql/IN/customers.csv'
 BASE_DIR = tempfile.gettempdir()
 CONN_ID = 'poc_mysql'
+CONN_ID_PSQL = 'poc_psql'
 
 with DAG(
     dag_id="db_2_dbs",
@@ -65,7 +66,29 @@ with DAG(
         conn.close()
         kwargs['ti'].xcom_push(key='records', value=records_readed)
 
-    load_data_task = read_data()
+    read_data_task = read_data()
     # [END read_data_mysql]
+    # [START load data]
+    @task(task_id="load_data_postgresql")
+    def load_data_postgres(ds=None, **kwargs):
+        records = kwargs['ti'].xcom_pull(key='records')
+        output_records = []
+        output_record = []
+        target_fields = []
+        destination = PostgresHook(CONN_ID_PSQL)
+        conn = destination.get_conn()
+        cursor = conn.cursor()
+        dt_insert = 'delete from customers'
+        destination.run(dt_insert)
+        for row in records:
+            dt_insert = 'insert into customers (id, first_name, last_name, email, phone, address, gender, age, registered, orders, spent, job, hobbies, is_married, creation_date) values (\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\')'.format(row[0],row[1],row[2],row[3],row[4],row[5],row[6],row[7],row[8],row[9],row[10],row[11],row[12],row[13],row[14])
+            destination.run(dt_insert)
 
-    read_data
+        cursor.close()
+        conn.close()
+        kwargs['ti'].xcom_push(key='records', value=output_records)
+
+    load_data_task_psql = load_data_postgres()
+    # [END load_data]
+
+    read_data_task >> load_data_task_psql

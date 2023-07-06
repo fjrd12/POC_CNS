@@ -22,7 +22,10 @@ virtual environment.
 from __future__ import annotations
 from airflow.hooks.base import BaseHook
 from airflow.hooks.mysql_hook import MySqlHook
+#from airflow.hooks.mssql_hook import MsSqlHook
 from airflow.hooks.postgres_hook import PostgresHook
+from airflow.models.connection import Connection
+
 import logging
 import shutil
 import sys
@@ -48,11 +51,11 @@ CONN_ID_PSQL = 'poc_psql'
 CONN_ID_MSSQL = 'poc_mssql'
 
 with DAG(
-    dag_id="db_2_dbs",
+    dag_id="db_2_dbsmssqls",
     schedule=None,
     start_date=pendulum.datetime(2021, 1, 1, tz="UTC"),
     catchup=False,
-    tags=["file_2_mysql"],
+    tags=["file_2_mssql"],
 ) as dag:
 
     # [START read_data_mysql]
@@ -69,52 +72,31 @@ with DAG(
 
     read_data_task = read_data()
     # [END read_data_mysql]
-    # [START load_data_postgres]
-    @task(task_id="load_data_postgresql")
-    def load_data_postgres(ds=None, **kwargs):
-        records = kwargs['ti'].xcom_pull(key='records')
-        output_records = []
-        output_record = []
-        target_fields = []
-        destination = PostgresHook(CONN_ID_PSQL)
-        conn = destination.get_conn()
-        cursor = conn.cursor()
-        dt_insert = 'delete from customers'
-        destination.run(dt_insert)
-        for row in records:
-            dt_insert = 'insert into customers (id, first_name, last_name, email, phone, address, gender, age, registered, orders, spent, job, hobbies, is_married, creation_date) values (\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\',\'{}\')'.format(row[0],row[1],row[2],row[3],row[4],row[5],row[6],row[7],row[8],row[9],row[10],row[11],row[12],row[13],row[14])
-            destination.run(dt_insert)
 
-        cursor.close()
-        conn.close()
-        kwargs['ti'].xcom_push(key='records', value=output_records)
+#    # [START insert_mssql_hook]
+#    @dag.task(task_id="insert_mssql_task")
+#    def insert_mssql_hook(**kwargs):
+#        mssql_hook = MsSqlHook(mssql_conn_id="poc_mssql", schema="poc_db")
+#        records = kwargs['ti'].xcom_pull(key='records')
+#        target_fields = []
+#        target_fields.append('id')
+#        target_fields.append('first_name')
+#        target_fields.append('last_name')
+#        target_fields.append('email')
+#        target_fields.append('phone')
+#        target_fields.append('address')
+#        target_fields.append('gender')
+#        target_fields.append('age')
+#        target_fields.append('registered')
+#        target_fields.append('orders')
+#        target_fields.append('spent')
+#        target_fields.append('job')
+#        target_fields.append('hobbies')
+#        target_fields.append('is_married')
+#        target_fields.append('creation_date')
+#        mssql_hook.insert_rows(table="customers", rows=records, target_fields=target_fields)
 
-    load_data_task_psql = load_data_postgres()
-    # [END load_data_postgres]
-
-    # [START load_data_mssql]
-    @task(task_id="load_data_mssql")
-    def load_data_mssql(ds=None, **kwargs):
-        records = kwargs['ti'].xcom_pull(key='records')
-        output_records = []
-    # [END load_data_mssql]
-    load_data_task_mssql = load_data_mssql()
-
-    # [START load_data_oracle]
-    @task(task_id="load_data_oracle")
-    def load_data_oracle(ds=None, **kwargs):
-        records = kwargs['ti'].xcom_pull(key='records')
-        output_records = []
-    # [END load_data_oracle]
-    load_data_task_oracle = load_data_oracle()
-
-
-    # [START load_data_firebird]
-    @task(task_id="load_data_firebird")
-    def load_data_firebird(ds=None, **kwargs):
-        records = kwargs['ti'].xcom_pull(key='records')
-        output_records = []
-    # [END load_data_oracle]
-    load_data_task_firebird = load_data_firebird()
-
-    read_data_task >> [load_data_task_psql, load_data_task_mssql, load_data_task_oracle, load_data_task_firebird]
+ #   load_data_task_mssql = insert_mssql_hook()
+    # [END insert_mssql_hook]
+    read_data_task
+    #>> [load_data_task_mssql]

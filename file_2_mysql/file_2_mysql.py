@@ -108,7 +108,6 @@ with DAG(
         kwargs['ti'].xcom_push(key='records', value=output_records)
     transform_data_task =transform_data()
     #[END transform_data]
-    # [START load data]
     @task(task_id="load_data")
     def load_data(ds=None, **kwargs):
         records = kwargs['ti'].xcom_pull(key='records')
@@ -134,6 +133,8 @@ with DAG(
         target_fields.append('hobbies')
         target_fields.append('is_married')
         target_fields.append('creation_date')
+        source.run(
+            'truncate table customers')
         source.insert_rows('poc_db.customers',
                            records,
                            target_fields=target_fields,
@@ -147,4 +148,4 @@ with DAG(
     # [END load_data]
 
 
-    ingest_file_task >> validate_data_task >> transform_data_task >> load_data_task
+    ingest_file_task >> validate_data_task >> transform_data_task >>  load_data_task

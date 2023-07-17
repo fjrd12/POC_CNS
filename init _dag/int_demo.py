@@ -48,17 +48,18 @@ BASE_DIR = tempfile.gettempdir()
 #Mysql
 CONN_ID_MYSQL = 'poc_mysql'
 CONN_TYPE_MYSQL = 'mysql'
-CONN_HOST_MYSQL = 'root'
+CONN_HOST_MYSQL = '172.18.0.4'
 CONN_USR_MYSQL = 'root'
 CONN_PSW_MYSQL = 'rjon2457'
-CONN_PSW_PORT = 'rjon2457'
+CONN_PORT_MYSQL = '3306'
 
 #Postgre
 CONN_ID_PSQL = 'poc_psql'
-CONN_TYPE_PSQL = 'mysql'
-CONN_USR_PSQL = 'root'
-CONN_HOST_PSQL = 'root'
-CONN_PSW_PSQL = 'rjon2457'
+CONN_TYPE_PSQL = 'pssql'
+CONN_USR_PSQL = 'airflow'
+CONN_HOST_PSQL = '172.18.0.3'
+CONN_PSW_PSQL = 'airflow'
+CONN_PORT_PSSQL = '5432'
 
 #Mssql
 CONN_ID_MSSQL = 'poc_mssql'

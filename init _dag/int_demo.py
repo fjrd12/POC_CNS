@@ -50,7 +50,7 @@ CONN_ID_MYSQL = 'poc_mysql'
 CONN_TYPE_MYSQL = 'mysql'
 CONN_HOST_MYSQL = '172.18.0.4'
 CONN_USR_MYSQL = 'root'
-CONN_PSW_MYSQL = 'rjon2457'
+CONN_PSW_MYSQL = 'helloworld'
 CONN_PORT_MYSQL = '3306'
 
 #Postgre
@@ -59,7 +59,7 @@ CONN_TYPE_PSQL = 'pssql'
 CONN_USR_PSQL = 'airflow'
 CONN_HOST_PSQL = '172.18.0.3'
 CONN_PSW_PSQL = 'airflow'
-CONN_PORT_PSSQL = '5432'
+CONN_PORT_PSQL = '5432'
 
 #Mssql
 CONN_ID_MSSQL = 'poc_mssql'
@@ -107,7 +107,23 @@ with DAG(
             session.add(conn)
             session.commit() # it will insert the connection object programmatically.
         except:
-            log.warning(e)
+            log.warning('Error creando conexión MySQL')
+        try:
+            #Create connection MySQL
+            conn = Connection(
+                conn_id=CONN_ID_PSQL,
+                conn_type=CONN_TYPE_PSQL,
+                host=CONN_HOST_PSQL,
+                login=CONN_USR_PSQL,
+                password=CONN_PSW_PSQL,
+                port=CONN_PORT_PSQL
+            ) #create a connection object
+            session = settings.Session() # get the session
+            session.add(conn)
+            session.commit() # it will insert the connection object programmatically.
+        except:
+            log.warning('Error creando conexión Postgre')
+
         #TODO: Create connections Oracle
         #TODO: Create connections SQL Server
         #TODO: Create connections SQL Firebird
@@ -118,6 +134,7 @@ with DAG(
 
     @task(task_id="load_data")
     def create_schemas(ds=None, **kwargs):
+        # Create MySQL Schemas
         source = MySqlHook(CONN_ID_MYSQL)
         conn = source.get_conn()
         cursor = conn.cursor()
@@ -148,7 +165,38 @@ with DAG(
         cursor.close()
         conn.close()
 
+        # Create PSQL Schemas
+        source = PostgresHook(CONN_ID_PSQL)
+        conn = source.get_conn()
+        cursor = conn.cursor()
+        try:
+            source.run( 'drop table if exists POC_CNS.customers')
+            source.run( 'drop schema if exists POC_CNS')
+            source.run( 'CREATE schema POC_CNS')
+            source.run(" create table POC_CNS.customers ("
+                        "    id            integer      primary key,"
+                        "    first_name    varchar,"
+                        "    last_name     varchar,"
+                        "    email         varchar,"
+                        "    phone         varchar,"
+                        "    address       varchar,"
+                        "    gender        varchar,"
+                        "    age           integer,"
+                        "    registered    date,"
+                        "    orders        integer,"
+                        "    spent         numeric,"
+                        "    job           varchar,"
+                        "    hobbies       varchar,"
+                        "    is_married    integer,"
+                        "    creation_date date"
+                        ")"
+                       )
+        except:
+            log.error('Was an error in creation schemas')
+        cursor.close()
+        conn.close()
+
+
     create_schemas_task = create_schemas()
 
-    create_connections_task
-    create_schemas_task
+    create_connections_task >> create_schemas_task

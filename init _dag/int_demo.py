@@ -93,45 +93,62 @@ with DAG(
     # [START read_data_mysql]
     @task(task_id="create_connections")
     def create_connections(ds=None, **kwargs):
-        #Create connection
-        conn = Connection(
-            conn_id=CONN_ID_MYSQL,
-            conn_type=CONN_TYPE_MYSQL,
-            host=CONN_HOST_MYSQL,
-            login=CONN_USR_MYSQL,
-            password=CONN_PSW_MYSQL,
-            port=CONN_PORT_MYSQL
-        ) #create a connection object
-        session = settings.Session() # get the session
-        session.add(conn)
-        session.commit() # it will insert the connection object programmatically.
-    create_connections_tasks = create_connections()
+        try:
+            #Create connection MySQL
+            conn = Connection(
+                conn_id=CONN_ID_MYSQL,
+                conn_type=CONN_TYPE_MYSQL,
+                host=CONN_HOST_MYSQL,
+                login=CONN_USR_MYSQL,
+                password=CONN_PSW_MYSQL,
+                port=CONN_PORT_MYSQL
+            ) #create a connection object
+            session = settings.Session() # get the session
+            session.add(conn)
+            session.commit() # it will insert the connection object programmatically.
+        except:
+            log.warning(e)
+        #TODO: Create connections Oracle
+        #TODO: Create connections SQL Server
+        #TODO: Create connections SQL Firebird
+
+
+    create_connections_task = create_connections()
     # [END create_connections]
 
-#    # [START insert_mssql_hook]
-#    @dag.task(task_id="insert_mssql_task")
-#    def insert_mssql_hook(**kwargs):
-#        mssql_hook = MsSqlHook(mssql_conn_id="poc_mssql", schema="poc_db")
-#        records = kwargs['ti'].xcom_pull(key='records')
-#        target_fields = []
-#        target_fields.append('id')
-#        target_fields.append('first_name')
-#        target_fields.append('last_name')
-#        target_fields.append('email')
-#        target_fields.append('phone')
-#        target_fields.append('address')
-#        target_fields.append('gender')
-#        target_fields.append('age')
-#        target_fields.append('registered')
-#        target_fields.append('orders')
-#        target_fields.append('spent')
-#        target_fields.append('job')
-#        target_fields.append('hobbies')
-#        target_fields.append('is_married')
-#        target_fields.append('creation_date')
-#        mssql_hook.insert_rows(table="customers", rows=records, target_fields=target_fields)
+    @task(task_id="load_data")
+    def create_schemas(ds=None, **kwargs):
+        source = MySqlHook(CONN_ID_MYSQL)
+        conn = source.get_conn()
+        cursor = conn.cursor()
+        try:
+            source.run( 'drop table if exists POC_CNS.customers')
+            source.run( 'drop database if exists POC_CNS')
+            source.run( 'CREATE DATABASE POC_CNS')
+            source.run(" create table POC_CNS.customers ("
+                        "    id            int auto_increment primary key,"
+                        "    first_name    varchar(150) not null,"
+                        "    last_name     varchar(150) not null,"
+                        "    email         varchar(45)  not null,"
+                        "    phone         varchar(45)  not null,"
+                        "    address       varchar(150) not null,"
+                        "    gender        varchar(45)  not null,"
+                        "    age           int          not null,"
+                        "    registered    datetime     null,"
+                        "    orders        int          null,"
+                        "    spent         decimal      null,"
+                        "    job           varchar(45)  null,"
+                        "    hobbies       varchar(150) null,"
+                        "    is_married    tinyint      null,"
+                        "    creation_date datetime     null"
+                        ")"
+                       )
+        except:
+            log.error('Was an error in creation schemas')
+        cursor.close()
+        conn.close()
 
- #   load_data_task_mssql = insert_mssql_hook()
-    # [END insert_mssql_hook]
-    create_connections_tasks
-    #>> [load_data_task_mssql]
+    create_schemas_task = create_schemas()
+
+    create_connections_task
+    create_schemas_task
